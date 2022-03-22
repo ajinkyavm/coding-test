@@ -4,8 +4,29 @@
   </head>
   <body>
     <canvas></canvas>
+    <div class="patternContent">
+
+      <!--Select Input for selecting pattern -->
+      Select a pattern
+      <select id="patternInput" name="pattern">
+        <option>Select Pattern</option>
+      </select>
+
+      <!-- Text Output for Pattern Description -->
+      <div id="patternDescription"></div>
+
+      <!--Start Button to trigger evolution -->
+      <button id="startEvolutionButton">Start</button>
+
+    </div>
   </body>
+
   <script type="module">
+
+    //Class imports
+    import { loadJSON, loadPattern } from './src/helper.js';
+    import Evolution from "./src/evolution.js";
+
     const scale = 4;
     const worldWidth = 480;
     const worldHeight = 240;
@@ -26,5 +47,90 @@
         )
       );
     };
+
+    //Default World Initialization
+    let world = Array.from(
+            { length: 240},
+            () => Array.from({length: 480}, () => undefined)
+    )
+    render(world);
+
+    //get elements to from DOM
+    const patternInput = document.getElementById("patternInput");
+    const patternDescription = document.getElementById("patternDescription");
+    const startEvolutionButton = document.getElementById("startEvolutionButton");
+
+    //Init global variables
+    let evolutionCycle;
+    let evolution = new Evolution();
+
+    //Select Input On Change Event
+    const onSelectChange = () => {
+      if(evolutionCycle) clearInterval(evolutionCycle);
+
+      const selectedIndex = patternInput.value;
+
+      let worldOnSelect = Array.from(
+              { length: 240},
+              () => Array.from({length: 480}, () => undefined)
+      )
+
+      //If Default "Select Pattern" is selected
+      if(isNaN(selectedIndex)) {
+        render(worldOnSelect);
+        patternDescription.innerText = "";
+        return;
+      }
+
+      //Update Pattern Description
+      patternDescription.innerText = jsonDataLoad[selectedIndex].description;
+
+      //Transforming data to JSON
+      let selectedPattern = loadPattern(jsonDataLoad[selectedIndex].pattern);
+
+      //Aligning the selected pattern in the centre of World
+      const midRow = Math.floor((world.length - 1)/2);
+      const midCol = Math.floor((world[0].length - 1)/2);
+
+      for (let row = 0; row < selectedPattern.length; row++) {
+        for (let col = 0; col < selectedPattern[0].length; col++) {
+          worldOnSelect[row + midRow][col + midCol] = selectedPattern[row][col];
+        }
+      }
+
+      render(worldOnSelect);
+      world = worldOnSelect;
+    }
+
+    //Start Button On Click Event
+    const onStart = () => {
+      if(evolutionCycle) clearInterval(evolutionCycle);
+
+      evolution.initialise(world);
+
+      evolutionCycle = setInterval(() => {
+        render(evolution.evolve());
+      }, 100);
+    }
+
+    //assign event listeners
+    patternInput.addEventListener("change", onSelectChange);
+    startEvolutionButton.addEventListener("click", onStart);
+
+    const successCallback = (data) => {
+      window.jsonDataLoad = data;
+
+      let option;
+      for (let i = 0; i < data.length; i++) {
+        option = document.createElement('option');
+        option.text = data[i].name;
+        option.value = i;
+        patternInput.add(option);
+      }
+    }
+
+    //API Call to load JSON data from lexicon.json
+    loadJSON("./src/lexicon.json", successCallback, (data) => {console.error(data)});
+
   </script>
 </html>
